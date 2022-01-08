@@ -10,6 +10,14 @@ import re
 
 def read_AniformModel():
 
+		global Param, tmpdf
+		# Ps, tau0, c0, Ft, C, Eta0, n, ap, bp, p0, \
+		# Cond, Conv, Emi, EmiO, \
+		# Rho, E, nu, \
+		# E1, E2, G12, nu12, \
+		# CvEta0, EtaInf, m, CVFn, tension, tmpdf, Param
+
+		Param = dict() #  Dictionary of parameters
 
 		lines=pd.read_csv(filename+'.afi',delimiter='\t',header=None)
 		df = pd.DataFrame(lines)#.astype('string')
@@ -24,29 +32,33 @@ def read_AniformModel():
 		tmpdf.columns=col
 
 		# Penalty Polymer friction
-		Ps = [] # Penalty stiffness
-		tau0 = []
-		c0 = []
-		Ft = [] # Film thickness
-		C = [] # Another param in Power Law viscosity
-		Eta0 = []
-		n = []
-		ap = []
-		bp = []
-		p0 = []
+		Param["Ps"]=[] # Penalty stiffness
+		Param["tau0"] = []
+		Param["c0"] = []
+		Param["Ft"] = [] # Film thickness
+		Param["C"] = [] # Another param in Power Law viscosity
+		Param["Eta0"] = []
+		Param["n"] = []
+		Param["ap"] = []
+		Param["bp"] = []
+		Param["p0"] = []
 		if len(tmpdf['col2'].str.match('PenaltyPolymerILD')):
 			PenPolyNum = tmpdf[tmpdf['col2'].str.match('PenaltyPolymerILD')].index
 			for i in PenPolyNum:
-				Ps.append(tmpdf['col1'].iloc[i+1]) #=tmpdf['col1'].iloc[i+1]+0.1*tmpdf['col1'].iloc[i+1] # Penalty stiffness
-				tau0.append(tmpdf['col1'].iloc[i+2])
-				tau0.append(tmpdf['col1'].iloc[i+3])
-				tau0.append(tmpdf['col1'].iloc[i+4])
-				C.append(tmpdf['col1'].iloc[i+5]) #tmpdf['col1'].iloc[i+5]+0.1*tmpdf['col1'].iloc[i+5] # C
-				Eta0.append(tmpdf['col1'].iloc[i+6])
-				n.append(tmpdf['col1'].iloc[i+7])
-				ap.append(tmpdf['col1'].iloc[i+8])
-				bp.append(tmpdf['col1'].iloc[i+9])
-				p0.append(tmpdf['col1'].iloc[i+10])
+				Param["Ps"].append(tmpdf['col1'].iloc[i+1]) #=tmpdf['col1'].iloc[i+1]+0.1*tmpdf['col1'].iloc[i+1] # Penalty stiffness
+				Param["tau0"].append(tmpdf['col1'].iloc[i+2])
+				Param["c0"].append(tmpdf['col1'].iloc[i+3])
+				Param["Ft"].append(tmpdf['col1'].iloc[i+4])
+				Param["C"].append(tmpdf['col1'].iloc[i+5]) #tmpdf['col1'].iloc[i+5]+0.1*tmpdf['col1'].iloc[i+5] # C
+				Param["Eta0"].append(tmpdf['col1'].iloc[i+6])
+				Param["n"].append(tmpdf['col1'].iloc[i+7])
+				Param["ap"].append(tmpdf['col1'].iloc[i+8])
+				Param["bp"].append(tmpdf['col1'].iloc[i+9])
+				Param["p0"].append(tmpdf['col1'].iloc[i+10])
+
+		#for i in range(0,len(Ps)):
+		#	Param["Ps"].append(Ps[i])
+		#	Param["tau0"].append(tau0[i])
 
 		Cond = [] # Conduction coefficient
 		Conv = [] # Convection coefficient
@@ -102,7 +114,7 @@ def read_AniformModel():
 		CvEta0 = []
 		EtaInf = []
 		m = []
-		n = []
+		CVFn = []
 
 		if len(tmpdf['col2'].str.match('ViscousCrossLD')):
 			CrViscNum = tmpdf[tmpdf['col2'].str.match('ViscousCrossLD')].index
@@ -110,7 +122,7 @@ def read_AniformModel():
 				CvEta0.append(tmpdf['col1'].iloc[i+2])
 				EtaInf.append(tmpdf['col1'].iloc[i+3])
 				m.append(tmpdf['col1'].iloc[i+4])
-				n.append(tmpdf['col1'].iloc[i+5])
+				CVFn.append(tmpdf['col1'].iloc[i+5])
 
 		# Adhesion between plies
 		tension = []
@@ -119,11 +131,9 @@ def read_AniformModel():
 			for i in AdhNum:
 				tension.append(tmpdf['col1'].iloc[i+1])
 
-		with open('model'+str(sample_num)+'.afi','w') as f:
-			dfAsString=tmpdf.to_string(header=False, index=False)
-			f.write(dfAsString)
 
 
+		#print (Param['Ps'][0])
 		#print(Ps,Cond,Conv)
 			#print(tmpdf.col0.values,file=f) #for k in range(0,df.shape[0]
 		#for k in u:
@@ -141,12 +151,49 @@ def read_AniformModel():
 		#print(u)
 		#tmpDF=pd.concat([s.loc[k].reset_index(drop=True) for k in u], axis=1, keys=u)
 		#print(maxrowlen,maxrownum)
-def createDesignMatrix(sample_num):
-		distribution=cp.Uniform()
+def createDesignMatrix():
+		global DesgnPnt
+		DesgnPnt = dict()
+
+		percent = 0.1
+		Udist=cp.Uniform(-1*percent,1*percent)
+		Ndist=cp.Normal()
+
+		print('Current working directory',os.getcwd())
+
+		text=pd.read_csv('MaterialmodelSens.txt',delimiter='\t',header=None)
+		df = pd.DataFrame(text).astype('string')
+		df.columns=['A']
+		df=df.A.str.split(expand=True)
+		# print(len(df.iloc[1]))
+		Mean=[]
+
+		for i in range(0,df.shape[0]):
+			line=df.iloc[i].to_list()
+			if 'PenaltyPolymer' in line:
+				line.remove('PenaltyPolymer')
+				dim=len(line)
+				for l in line: DesgnPnt[l]=[]
+				print('Number of uncertain variables in Penalty Polymer model', dim)
+				#dist = cp.Iid(Udist,dim)
+
+				for l in line:
+					if len(set(Param[l]))==1:
+						Mean=float(Param[l][0])
+						DesgnPnt[l].append((1+Udist.sample(sample_num,'R'))*Mean)
+					else:
+						for j in range(0,len(Param[l])):
+							Mean=float(Param[l][j])
+							DesgnPnt[l].append((1+Udist.sample(sample_num,'R'))*Mean)
+							print(Mean,DesgnPnt)
+
+
+		with open('model'+str(sample_num)+'.afi','w') as f:
+			dfAsString=tmpdf.to_string(header=False, index=False)
+			f.write(dfAsString)
+		f.close()
 
 def run_Aniform(sampleID):
-
-		read_AniformModel()
 
 		inpfilename=filename+'.afi'
 
@@ -186,9 +233,14 @@ def main(args):
 		global filename
 
 		filename = args[-1]
-		sample_num = int(args[-2])
+		sample_num = int(args[-2]) # Total number of samples
 
+		print('Aniform model input file', filename)
 		print('Total number of samples', sample_num)
+
+		read_AniformModel()
+
+		createDesignMatrix()
 
 		samples=[i for i in range(0, sample_num)]
 
