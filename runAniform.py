@@ -131,6 +131,19 @@ def read_AniformModel():
 			for i in AdhNum:
 				tension.append(tmpdf['col1'].iloc[i+1])
 
+		Param["T"] = []
+		Param["T0"] = []
+		Param["T1"] = []
+		Param["T2"] = []
+		if len(tmpdf['col0'].str.fullmatch('\*initialize')):
+			TempNum = tmpdf[tmpdf['col0'].str.fullmatch('\*initialize')].index
+			for i in TempNum:
+				Param["T"].append(tmpdf['col1'].iloc[i+1])
+				Param["T0"].append(tmpdf['col1'].iloc[i+2])
+				Param["T1"].append(tmpdf['col1'].iloc[i+3])
+				Param["T2"].append(tmpdf['col1'].iloc[i+4])
+
+
 def createDesignMatrix():
 		global DPdf
 		DesgnPnt = dict()
@@ -160,12 +173,26 @@ def createDesignMatrix():
 				for l in line:
 					if len(set(Param[l]))==1:
 						Mean=float(Param[l][0])
-						DesgnPnt[l].append((1+Udist.sample(sample_num,'R'))*Mean)
+						DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean) # 'R' for Pseudo random sampling
 					else:
 						for j in range(0,len(Param[l])):
 							Mean=float(Param[l][j])
-							DesgnPnt[l].append((1+Udist.sample(sample_num,'R'))*Mean)
+							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
 							#print(Mean,DesgnPnt)
+
+			if 'Temperature' in line:
+				line.remove('Temperature')
+				dim=len(line)
+				for l in line: DesgnPnt[l]=[]
+				print('Number of uncertain temperature', dim)
+				for l in line:
+					if len(set(Param[l]))==1:
+						Mean=float(Param[l][0])
+						DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean) # 'R' for Pseudo random sampling
+					else:
+						for j in range(0,len(Param[l])):
+							Mean=float(Param[l][j])
+							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
 
 
 		DPdf = pd.DataFrame.from_dict(DesgnPnt,orient='index')
@@ -173,6 +200,10 @@ def createDesignMatrix():
 		#dp = dp.append(DesgnPnt["Eta0"])
 		print (DPdf.head())
 		print (DPdf.tail())
+		with open('DesignPoints.txt','w') as f:
+			dfAsString=DPdf.to_string(header=True, index=True)
+			f.write(dfAsString)
+		f.close()
 
 def write_AniformModel(var):
 
@@ -247,6 +278,21 @@ def write_AniformModel(var):
 						else:
 							track = track+1
 							print("This 'n' is associated with ViscousCrossLD.",'track = %.0d' %(track))
+
+					elif parnam == 'T': #
+
+						if AnInpdf['col0'].iloc[r-1] == '*initialize':
+							print('Ok', AnInpdf['col0'].iloc[r-1], 'row', r, parnam)
+							try:
+								print('\t Current value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+								print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+							except:
+								print("'None' type object found")
+								AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+						else:
+							track = track+1
+							print("This 'T' is associated with prescribed.",'track = %.0d' %(track))
 
 					else:
 						try:
