@@ -32,7 +32,7 @@ def read_AniformModel():
 		tmpdf.columns=col
 
 		# Penalty Polymer friction
-		Param["Ps"]=[] # Penalty stiffness
+		Param["Ps"] = [] # Penalty stiffness
 		Param["tau0"] = []
 		Param["c0"] = []
 		Param["Ft"] = [] # Film thickness
@@ -45,20 +45,17 @@ def read_AniformModel():
 		if len(tmpdf['col2'].str.fullmatch('PenaltyPolymerILD')):
 			PenPolyNum = tmpdf[tmpdf['col2'].str.fullmatch('PenaltyPolymerILD')].index
 			for i in PenPolyNum:
-				Param["Ps"].append(tmpdf['col1'].iloc[i+1]) #=tmpdf['col1'].iloc[i+1]+0.1*tmpdf['col1'].iloc[i+1] # Penalty stiffness
+				Param["Ps"].append(tmpdf['col1'].iloc[i+1])
 				Param["tau0"].append(tmpdf['col1'].iloc[i+2])
 				Param["c0"].append(tmpdf['col1'].iloc[i+3])
 				Param["Ft"].append(tmpdf['col1'].iloc[i+4])
-				Param["C"].append(tmpdf['col1'].iloc[i+5]) #tmpdf['col1'].iloc[i+5]+0.1*tmpdf['col1'].iloc[i+5] # C
+				Param["C"].append(tmpdf['col1'].iloc[i+5])
 				Param["eta0"].append(tmpdf['col1'].iloc[i+6])
 				Param["n"].append(tmpdf['col1'].iloc[i+7])
 				Param["ap"].append(tmpdf['col1'].iloc[i+8])
 				Param["bp"].append(tmpdf['col1'].iloc[i+9])
 				Param["p0"].append(tmpdf['col1'].iloc[i+10])
 
-		#for i in range(0,len(Ps)):
-		#	Param["Ps"].append(Ps[i])
-		#	Param["tau0"].append(tau0[i])
 
 		Cond = [] # Conduction coefficient
 		Conv = [] # Convection coefficient
@@ -111,18 +108,18 @@ def read_AniformModel():
 				G12.append(tmpdf['col1'].iloc[i+4])
 
 		# Cross Viscosity Fluid model
-		CvEta0 = []
-		EtaInf = []
-		m = []
-		CVFn = []
+		Param["CvEta0"] = []
+		Param["etainf"] = []
+		Param["m"] = []
+		Param["CVFn"] = []
 
 		if len(tmpdf['col2'].str.fullmatch('ViscousCrossLD')):
 			CrViscNum = tmpdf[tmpdf['col2'].str.fullmatch('ViscousCrossLD')].index
 			for i in CrViscNum:
-				CvEta0.append(tmpdf['col1'].iloc[i+2])
-				EtaInf.append(tmpdf['col1'].iloc[i+3])
-				m.append(tmpdf['col1'].iloc[i+4])
-				CVFn.append(tmpdf['col1'].iloc[i+5])
+				Param["CvEta0"].append(tmpdf['col1'].iloc[i+2])
+				Param["etainf"].append(tmpdf['col1'].iloc[i+3])
+				Param["m"].append(tmpdf['col1'].iloc[i+4])
+				Param["CVFn"].append(tmpdf['col1'].iloc[i+5])
 
 		# Adhesion between plies
 		tension = []
@@ -131,6 +128,7 @@ def read_AniformModel():
 			for i in AdhNum:
 				tension.append(tmpdf['col1'].iloc[i+1])
 
+		# Initial Temperature: Ambient, Laminate and Tool
 		Param["T"] = []
 		Param["T0"] = []
 		Param["T1"] = []
@@ -158,7 +156,7 @@ def createDesignMatrix():
 		df = pd.DataFrame(text).astype('string')
 		df.columns=['A']
 		df=df.A.str.split(expand=True)
-		# print(len(df.iloc[1]))
+
 		Mean=[]
 
 		for i in range(0,df.shape[0]):
@@ -168,7 +166,7 @@ def createDesignMatrix():
 				dim=len(line)
 				for l in line: DesgnPnt[l]=[]
 				print('Number of uncertain variables in Penalty Polymer model', dim)
-				#dist = cp.Iid(Udist,dim)
+
 
 				for l in line:
 					if len(set(Param[l]))==1:
@@ -178,7 +176,41 @@ def createDesignMatrix():
 						for j in range(0,len(Param[l])):
 							Mean=float(Param[l][j])
 							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
-							#print(Mean,DesgnPnt)
+
+
+			if 'ViscousCross' in line:
+				line.remove('ViscousCross')
+				dim=len(line)
+				for l in line: DesgnPnt[l]=[]
+				print('Number of uncertain variables in Viscous Cross model', dim)
+
+
+				for l in line:
+					if l == 'Cveta0':
+						if len(set(Param["CvEta0"]))==1:
+							Mean=float(Param["CvEta0"][0])
+							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean) # 'R' for Pseudo random sampling
+						else:
+							for j in range(0,len(Param["CvEta0"])):
+								Mean=float(Param["CvEta0"][j])
+								DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
+
+					elif l =='CVFn':
+						if len(set(Param["CVFn"]))==1:
+							Mean=float(Param["CVFn"][0])
+							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean) # 'R' for Pseudo random sampling
+						else:
+							for j in range(0,len(Param["CVFn"])):
+								Mean=float(Param["CVFn"][j])
+								DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
+					else:
+						if len(set(Param[l]))==1:
+							Mean=float(Param[l][0])
+							DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean) # 'R' for Pseudo random sampling
+						else:
+							for j in range(0,len(Param[l])):
+								Mean=float(Param[l][j])
+								DesgnPnt[l].append((1+Udist.sample(sample_num, rule = 'sobol'))*Mean)
 
 			if 'Temperature' in line:
 				line.remove('Temperature')
@@ -197,7 +229,7 @@ def createDesignMatrix():
 
 		DPdf = pd.DataFrame.from_dict(DesgnPnt,orient='index')
 
-		#dp = dp.append(DesgnPnt["Eta0"])
+
 		print (DPdf.head())
 		print (DPdf.tail())
 		with open('DesignPoints.txt','w') as f:
@@ -213,95 +245,140 @@ def write_AniformModel(var):
 		AnInpdf = tmpdf
 
 
-		print (AnInpdf.head())
-		print (AnInpdf.tail())
-
 		params = DPdf.index
 		params = list(map(lambda x: x.replace('Ps', 'penaltystiffness'), params))
 		params = list(map(lambda x: x.replace('Ft', 'filmthickness'), params))
 
 		for parnam in params:
+			if parnam == 'Cveta0':
 
-			if len(AnInpdf['col0'].str.fullmatch(parnam)):
-				row = AnInpdf[AnInpdf['col0'].str.fullmatch(parnam)].index
-				track=0
+				row = AnInpdf[AnInpdf['col2'].str.fullmatch('ViscousCrossLD')].index # store rows in i/p file with matching parnam
+
 				for count, r in enumerate(row):
+					print('Ok', AnInpdf['col2'].iloc[r], 'row', r, 'eta0')
+					try:
+							print('\t Current value of', AnInpdf['col0'].iloc[r+2], AnInpdf['col1'].iloc[r+2])
+							AnInpdf['col1'].iloc[r+2] = DPdf[count].loc[parnam][desgnId]
+							print('\t New value of', AnInpdf['col0'].iloc[r+2], AnInpdf['col1'].iloc[r+2])
+					except:
+							print("'None' type object found")
+							AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+
+			elif parnam == 'CVFn':
+
+				row = AnInpdf[AnInpdf['col2'].str.fullmatch('ViscousCrossLD')].index # store rows in i/p file with matching parnam
+
+				for count, r in enumerate(row):
+					print('Ok', AnInpdf['col2'].iloc[r], 'row', r, 'eta0')
+					try:
+							print('\t Current value of', AnInpdf['col0'].iloc[r+5], AnInpdf['col1'].iloc[r+2])
+							AnInpdf['col1'].iloc[r+5] = DPdf[count].loc[parnam][desgnId]
+							print('\t New value of', AnInpdf['col0'].iloc[r+5], AnInpdf['col1'].iloc[r+2])
+					except:
+							print("'None' type object found")
+							AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+
+
+			else:
+
+				if len(AnInpdf['col0'].str.fullmatch(parnam)): # match parameter name in DPdf with Aniform i/p file
+					row = AnInpdf[AnInpdf['col0'].str.fullmatch(parnam)].index # store rows in i/p file with matching parnam
+					track = 0
+					for count, r in enumerate(row):
 					#if (AnInpdf['col0'].iloc[row] == parnam)
 					#print('OK')
-					if parnam == 'penaltystiffness':
-						try:
-							print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-							AnInpdf['col1'].iloc[r] = DPdf[count].loc['Ps'][desgnId]
-							print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-						except:
-							print("'None' type object found")
-							AnInpdf['col1'].iloc[r] = DPdf[0].loc['Ps'][desgnId] # It is assumed here \
+						if parnam == 'penaltystiffness':
+							try:
+								print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								AnInpdf['col1'].iloc[r] = DPdf[count].loc['Ps'][desgnId]
+								print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+							except:
+								print("'None' type object found")
+								AnInpdf['col1'].iloc[r] = DPdf[0].loc['Ps'][desgnId] # It is assumed here \
 							# that in subsequent occurences of parnam in Input file, the corresponding \
 							# value of the parameter (Mean) is the same as that in the very first \
 							# occurence. This needs reconsideration as it can result in a bug when, \
 							# for eg: PenaltyPolymer is defined three times and for the first occurence \
 							# value of Ps is X and for the two subsequent occurencea the value is Y
-					elif parnam == 'filmthickness':
-						try:
-							print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-							AnInpdf['col1'].iloc[r] = DPdf[count].loc['Ft'][desgnId]
-							print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-						except:
-							print("'None' type object found")
-							AnInpdf['col1'].iloc[r] = DPdf[0].loc['Ft'][desgnId]
-
-					elif parnam == 'eta0': #
-						if AnInpdf['col2'].iloc[r-6] == 'PenaltyPolymerILD':
-							print('Ok', AnInpdf['col2'].iloc[r-6], 'row', r)
+						elif parnam == 'filmthickness':
 							try:
 								print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-								AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+								AnInpdf['col1'].iloc[r] = DPdf[count].loc['Ft'][desgnId]
 								print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
 							except:
 								print("'None' type object found")
-								AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+								AnInpdf['col1'].iloc[r] = DPdf[0].loc['Ft'][desgnId]
+
+						elif parnam == 'eta0': #
+							if AnInpdf['col2'].iloc[r-6] == 'PenaltyPolymerILD':
+								print('Ok', AnInpdf['col2'].iloc[r-6], 'row', r)
+								try:
+									print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+									AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+									print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								except:
+									print("'None' type object found")
+									AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+
+							elif AnInpdf['col2'].iloc[r-2] == 'ViscousCrossLD':
+
+								print('This eta0 is associated with ViscousCrossLD.','track = %.0d' %(track))
+								track = track+1
+
+						elif parnam == 'n': #
+
+							if AnInpdf['col2'].iloc[r-7] == 'PenaltyPolymerILD':
+								print('Ok', AnInpdf['col2'].iloc[r-7], 'row', r, parnam)
+								try:
+									print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+									AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+									print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								except:
+									print("'None' type object found")
+									AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+							else:
+								track = track+1
+								print("This 'n' is associated with ViscousCrossLD.",'track = %.0d' %(track))
+
+
+						elif parnam == 'T': #
+
+							if AnInpdf['col0'].iloc[r-1] == '*initialize':
+								print('Ok', AnInpdf['col0'].iloc[r-1], 'row', r, parnam)
+								try:
+									print('\t Current value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+									AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+									print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								except:
+									print("'None' type object found")
+									AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+							else:
+								track = track+1
+								print("This 'T' is associated with prescribed.",'track = %.0d' %(track))
+
+
+						elif parnam == 'etainf':
+
+							if AnInpdf['col2'].iloc[r-3] == 'ViscousCrossLD':
+								print('Ok', AnInpdf['col2'].iloc[r-3], 'row', r, parnam)
+								try:
+									print('\t Current value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+									AnInpdf['col1'].iloc[r] = DPdf[count].loc[parnam][desgnId]
+									print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
+								except:
+									print("'None' type object found")
+									AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
+
+
 						else:
-							track = track+1
-							print('This eta0 is associated with ViscousCrossLD.','track = %.0d' %(track))
-
-					elif parnam == 'n': #
-
-						if AnInpdf['col2'].iloc[r-7] == 'PenaltyPolymerILD':
-							print('Ok', AnInpdf['col2'].iloc[r-7], 'row', r, parnam)
+							print('Ok', AnInpdf['col0'].iloc[r], 'in', 'row', r, 'Changing', parnam)
 							try:
 								print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-								AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
+								AnInpdf['col1'].iloc[r] = DPdf[count].loc[parnam][desgnId]
 								print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
 							except:
 								print("'None' type object found")
 								AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
-						else:
-							track = track+1
-							print("This 'n' is associated with ViscousCrossLD.",'track = %.0d' %(track))
-
-					elif parnam == 'T': #
-
-						if AnInpdf['col0'].iloc[r-1] == '*initialize':
-							print('Ok', AnInpdf['col0'].iloc[r-1], 'row', r, parnam)
-							try:
-								print('\t Current value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-								AnInpdf['col1'].iloc[r] = DPdf[count-track].loc[parnam][desgnId]
-								print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-							except:
-								print("'None' type object found")
-								AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
-						else:
-							track = track+1
-							print("This 'T' is associated with prescribed.",'track = %.0d' %(track))
-
-					else:
-						try:
-							print('\t Current value of',AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-							AnInpdf['col1'].iloc[r] = DPdf[count].loc[parnam][desgnId]
-							print('\t New value of', AnInpdf['col0'].iloc[r], AnInpdf['col1'].iloc[r])
-						except:
-							print("'None' type object found")
-							AnInpdf['col1'].iloc[r] = DPdf[0].loc[parnam][desgnId]
 
 		# Write input file for current design point
 		print('Current working directory', os.getcwd())
@@ -339,11 +416,11 @@ def run_Aniform(sampleID):
 
 		wd = os.getcwd()
 		meshsubdir = wd+'\meshes'
-        #print('Current working directory',meshsubdir)
+
 		print('Current working directory',wd)
 		try:
-			shutil.copy2(os.path.join(wd,inpfilename), path) # copy inputfile to the sample subdir
-			shutil.copytree(meshsubdir, path+'/meshes') # copy mesh directory into the sample directory
+			shutil.copy2(os.path.join(wd,inpfilename), path) # copy inputfile to sample dir
+			shutil.copytree(meshsubdir, path+'/meshes') # copy mesh directory to sample dir
 		except:
 			print('Could not copy all files')
 
