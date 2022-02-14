@@ -6,6 +6,8 @@ import chaospy as cp
 import numpy as np
 import pandas as pd
 import re
+pd.set_option('display.max_seq_items', None)
+
 
 
 def read_AniformModel():
@@ -231,11 +233,12 @@ def createDesignMatrix():
 
 
 		print (DPdf.head())
-		print (DPdf.tail())
-		with open('DesignPoints.txt','w') as f:
-			dfAsString=DPdf.to_string(header=True, index=True)
-			f.write(dfAsString)
-		f.close()
+		DPdf.to_excel("DesignPoints.xlsx", sheet_name='Sheet3', header=True, index=True)
+#		print (DPdf.tail())
+#		with open('DesignPoints.txt','w') as f:
+#			dfAsString=DPdf.to_string(header=True, index=True)
+#			f.write(dfAsString)
+#		f.close()
 
 def write_AniformModel(var):
 
