@@ -39,7 +39,7 @@ for i in range(start,start+numsample):
         tmpdf = df.A.str.split(expand=True).fillna('%')
         x = tmpdf[tmpdf[1].str.fullmatch('results')].index
 
-        RC = tmpdf.iloc[x[-10]+1:x[-9],3].astype('float')
+        RC = tmpdf.iloc[x[0]+1:x[1],3].astype('float')
         max_RC.append(max(RC))
         n = ax.hist(RC, bins=[0.0,2.0,4.0,6.0,8.0,10.0,12.0,14.0,16.0,18.0,20.0,22.0,24.0,26.0], range=(0.0, 25.0))
         ax.grid(which='both')
