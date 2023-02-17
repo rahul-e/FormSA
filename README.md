@@ -29,4 +29,4 @@ Automates a specific  post-processing task once simulations, corresponding to ev
     
     python .\PostprocessGUI.py ''number of design samples'' ''Aniform input filename''
     
-This will open the Aniform simulation results file, corresponding to each design point, one-by-one in the PrePost. The user must then manually export the results, displacements in this case, for any one ply as text file. Pandas library is used to process the result file. A histogram, with set bin width and range, is used to get the number of nodes exceeding a set displacement value, 2mm in this case. This data is then written to ''DispZ_NumNode.txt''.
+This will open the Aniform simulation results file, corresponding to each design point, one-by-one in the PrePost. The user must then manually export the results, displacements in this case, for any one ply as text file. Pandas library is used to process the result file. A histogram, with set bin width and range, is used to get the number of nodes exceeding a set displacement value, 2mm in this case. This data is then written to ''DispZ_NumNode_maxdisp.txt''.
